@@ -141,7 +141,7 @@
 <div id="gameover"></div>
 <audio id="bgm" src="music.mp3" loop preload="auto"></audio>
 <div id="menu" class="overlay">
-  <h2>👑 皇舆争霸</h2>
+  <h2>Dominion</h2>
   <div style="color:#ccc;margin-bottom:10px">Dominion · 二版基础包 · 人机对战</div>
   <div style="color:#889;font-size:12px;margin-bottom:6px">🎵 音乐：Rite of Passage — Kevin MacLeod (CC BY 4.0)</div>
   <button class="menu-btn" onclick="startGame()">🎮 开始游戏</button>
@@ -235,10 +235,12 @@ function newGame() {
   G.kingdom.sort((a,b)=>CARDS[a].cost-CARDS[b].cost);
   G.players.forEach(p => draw(p,5));
   G.aiLevel = S.aiLevel || 2;
-  G.aiStrat = AI_STRATS[Math.floor(Math.random()*AI_STRATS.length)];
+  // 只在"关键卡在场"的策略中随机选择（简单档用），避免策略与市场脱节
+  const usable = AI_STRATS.filter(st => st.keys.some(k => G.kingdom.includes(k)));
+  G.aiStrat = (usable.length ? usable : AI_STRATS)[Math.floor(Math.random() * (usable.length ? usable.length : AI_STRATS.length))];
   const lvlName = {1:"🌱 简单（多策略）",2:"⚔️ 普通（自适应引擎）",3:"🔥 困难（蒙特卡洛模拟）"}[G.aiLevel];
   log(`本局王国卡：${G.kingdom.map(cname).join("、")}`);
-  log(`（AI 强度：${lvlName}${G.aiLevel===2 ? " · 本局策略：" + G.aiStrat.name : ""}）`);
+  log(`（AI 强度：${lvlName}）`);
   log("游戏开始！你先行。");
   startTurn();
   render();
@@ -817,7 +819,7 @@ function aiGain(p, maxCost, toHand) {
   return null;
 }
 const AI_STRATS = [
-  { name:"大金钱+铁匠铺", picks:(p,coin)=>{
+  { name:"大金钱+铁匠铺", keys:["smithy"], picks:(p,coin)=>{
     const l = [];
     if (coin>=8) l.push("province");
     if (coin>=6) l.push("gold");
@@ -825,7 +827,7 @@ const AI_STRATS = [
     if (coin>=4 && countCard(p,"militia")<1) l.push("militia");
     if (coin>=3) l.push("silver");
     return l; } },
-  { name:"村庄引擎", picks:(p,coin)=>{
+  { name:"村庄引擎", keys:["village","festival"], picks:(p,coin)=>{
     const l = [];
     if (coin>=8) l.push("province");
     if (coin>=6) l.push("gold");
@@ -835,7 +837,7 @@ const AI_STRATS = [
     if (coin>=3 && countCard(p,"village")<4) l.push("village");
     if (coin>=3 && countCard(p,"silver")<2) l.push("silver");
     return l; } },
-  { name:"市场连击", picks:(p,coin)=>{
+  { name:"市场连击", keys:["market","council"], picks:(p,coin)=>{
     const l = [];
     if (coin>=8) l.push("province");
     if (coin>=6) l.push("gold");
@@ -844,7 +846,7 @@ const AI_STRATS = [
     if (coin>=4 && countCard(p,"militia")<1) l.push("militia");
     if (coin>=3 && countCard(p,"silver")<3) l.push("silver");
     return l; } },
-  { name:"民兵压制", picks:(p,coin)=>{
+  { name:"民兵压制", keys:["militia"], picks:(p,coin)=>{
     const l = [];
     if (coin>=8) l.push("province");
     if (coin>=6) l.push("gold");
@@ -854,7 +856,7 @@ const AI_STRATS = [
     if (coin>=3 && countCard(p,"silver")<4) l.push("silver");
     if (coin>=3 && countCard(p,"village")<3) l.push("village");
     return l; } },
-  { name:"女巫诅咒流", picks:(p,coin)=>{
+  { name:"女巫诅咒流", keys:["witch"], picks:(p,coin)=>{
     const l = [];
     if (coin>=8) l.push("province");
     if (coin>=6) l.push("gold");
@@ -863,7 +865,7 @@ const AI_STRATS = [
     if (coin>=4 && countCard(p,"smithy")<2) l.push("smithy");
     if (coin>=3) l.push("silver");
     return l; } },
-  { name:"小教堂瘦身", picks:(p,coin)=>{
+  { name:"小教堂瘦身", keys:["chapel"], picks:(p,coin)=>{
     const l = [];
     if (coin>=8) l.push("province");
     if (coin>=6) l.push("gold");
