@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#1a2e1a">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>皇舆争霸 Dominion - 二版基础包</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { font-family: "Microsoft YaHei", sans-serif; background: #2c4a2c; color: #eee; height: 100vh; display: flex; overflow: hidden; }
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; }
+  h1 { text-align: center; font-size: 17px; padding: 4px; background: #1a2e1a; }
+  #supply { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; }
+  .pile-group { display: flex; flex-direction: column; gap: 4px; }
+  .pile { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 2px 8px; border-radius: 6px; border: 2px solid transparent; }
+  .pile:hover { border-color: #ffd700; background: rgba(255,255,255,.06); }
+  .pile.empty { opacity: .35; cursor: default; }
+  .pile.afford { border-color: #ffd700; animation: pileGlow 1.2s infinite alternate; }
+  @keyframes pileGlow { to { box-shadow: 0 0 10px rgba(255,215,0,.7); } }
+  .card-tile { position: relative; width: 100px; height: 58px; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 11px; font-weight: bold; text-align: center; color: #111; box-shadow: 0 2px 4px rgba(0,0,0,.5); padding: 3px; gap: 1px; }
+  .card-tile.wide { width: 130px; height: 78px; justify-content: flex-start; padding-top: 4px; }
+  .card-tile .cost { position: absolute; top: -7px; right: -7px; margin: 0; box-shadow: 0 2px 4px rgba(0,0,0,.5); }
+  .card-tile .tname { font-size: 11px; }
+  .card-tile .tdesc { font-size: 8.5px; font-weight: normal; line-height: 1.3; }
+  .count { background: #000; color: #fff; border-radius: 50%; min-width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .cost { background: #ffd700; color: #000; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; margin-right: 4px; flex-shrink: 0; }
+  .money { background: #b87333; } .silver { background: #c0c0c0; } .gold { background: #ffd700; }
+  .victory { background: #7c9c5c; color: #fff; } .curse { background: #6a5acd; color: #fff; } .action { background: #d4e6f1; }
+  #mid { display: flex; justify-content: center; align-items: center; padding: 2px 20px; background: #1a2e1a; }
+  #sidebar { width: 300px; background: #162616; border-left: 2px solid #1a2e1a; display: flex; flex-direction: column; }
+  #sidebar h3 { font-size: 14px; padding: 8px 10px 4px; color: #ffd700; }
+  #log { flex: 1; font-size: 12px; overflow-y: auto; padding: 6px 10px; }
+  #log div { padding: 2px 0; border-bottom: 1px dotted rgba(255,255,255,.08); line-height: 1.4; }
+  #player { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 6px; min-height: 0; }
+  #ai-info { position: absolute; top: 4px; right: 18px; font-size: 12px; background: rgba(0,0,0,.25); padding: 3px 12px; border-radius: 8px; }
+  #stats-row { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0 18px; gap: 10px; }
+  .stats-box { display: flex; gap: 12px; font-size: 12px; background: rgba(0,0,0,.25); padding: 3px 12px; border-radius: 8px; flex-wrap: wrap; }
+  #hand { display: flex; gap: 8px; min-height: 106px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .hand-card { position: relative; width: 82px; height: 106px; border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; font-size: 11px; color: #111; cursor: pointer; box-shadow: 0 3px 6px rgba(0,0,0,.5); border: 2px solid #333; text-align: center; }
+  .hand-card .cost { position: absolute; top: -8px; right: -8px; box-shadow: 0 2px 4px rgba(0,0,0,.5); }
+  .hand-card .name { font-weight: bold; font-size: 13px; }
+  .hand-card .desc { font-size: 9px; line-height: 1.25; }
+  .hand-card.selectable { border-color: #ffd700; animation: glow 1s infinite alternate; }
+  .hand-card.no-action { border-color: #e74c3c; animation: glowRed 1s infinite alternate; }
+  @keyframes glow { to { box-shadow: 0 0 12px #ffd700; } }
+  @keyframes glowRed { to { box-shadow: 0 0 12px #e74c3c; } }
+  button { background: #4a7a4a; color: #fff; border: none; border-radius: 6px; padding: 5px 16px; font-size: 13px; cursor: pointer; }
+  button:hover { background: #5c9a5c; }
+  button:disabled { opacity: .4; cursor: default; }
+  #modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 16px; z-index: 10; }
+  #modal-cards { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 80%; align-items: center; }
+  #modal-cards button { display: block; margin: 4px auto; }
+  #turn-actions { display: flex; gap: 12px; }
+  #gameover { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; align-items: center; justify-content: center; flex-direction: column; font-size: 26px; gap: 14px; z-index: 20; }
+  .phase-tag { font-weight: bold; color: #ffd700; }
+  #ai-play { position: fixed; top: 42%; left: 50%; transform: translate(-50%,-50%); display: none; align-items: center; gap: 16px; z-index: 15; background: rgba(0,0,0,.55); padding: 20px 28px; border-radius: 14px; pointer-events: none; }
+  #ai-play .hand-card { cursor: default; animation: playIn .35s ease-out; transform: scale(1.25); border-color: #ffd700; }
+  #ai-play .tag { font-size: 18px; font-weight: bold; color: #ffd700; }
+  @keyframes playIn { from { transform: scale(.3) translateY(-60px); opacity: 0; } to { transform: scale(1.25) translateY(0); opacity: 1; } }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.88); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 18px; z-index: 30; }
+  .overlay h2 { font-size: 40px; color: #ffd700; text-shadow: 0 2px 8px rgba(0,0,0,.6); }
+  .menu-btn { font-size: 20px; padding: 14px 60px; min-width: 260px; }
+  #settings-panel { background: #1e301e; padding: 18px 24px; border-radius: 12px; max-width: 760px; max-height: 86vh; overflow-y: auto; }
+  #settings-panel h3 { color: #ffd700; margin: 8px 0; }
+  #settings-panel p, #settings-panel label { font-size: 13px; }
+  #kingdom-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+  .kslot { width: 88px; height: 58px; border-radius: 8px; border: 3px solid #7a8a7a; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #111; text-align: center; }
+  .kslot .st { font-size: 9px; font-weight: normal; }
+  .kslot.must { border-color: #2ecc71; }
+  .kslot.ban { border-color: #e74c3c; opacity: .4; }
+  #settings-panel .toggles { line-height: 2; }
+  #tut-bar { position: fixed; left: 14px; top: 42%; transform: translateY(-50%); width: 270px; background: rgba(0,0,0,.85); border: 2px solid #ffd700; border-radius: 10px; padding: 10px 14px; font-size: 13px; z-index: 25; display: none; line-height: 1.5; }
+  #tut-bar .op { color: #ffd700; font-weight: bold; text-shadow: 0 0 4px rgba(255,215,0,.4); }
+
+  /* ==================== 手机竖屏适配 ==================== */
+  @media (max-width: 720px) {
+    body { flex-direction: column; }
+    #sidebar { width: 100%; height: auto; max-height: 34vh; border-left: none; border-top: 2px solid #1a2e1a; order: 2; }
+    #sidebar h3 { padding: 6px 10px 2px; }
+    #log { max-height: 24vh; }
+    #main { order: 1; }
+    h1 { font-size: 15px; padding: 3px; }
+    #supply { gap: 3px; padding: 4px; }
+    .pile { padding: 2px 5px; gap: 4px; }
+    .card-tile { width: 78px; height: 52px; font-size: 10px; }
+    .card-tile.wide { width: 100px; height: 72px; }
+    .card-tile .tname { font-size: 10px; }
+    .card-tile .tdesc { font-size: 7.5px; }
+    .count { min-width: 18px; height: 18px; font-size: 10px; }
+    .cost { width: 17px; height: 17px; font-size: 10px; }
+    #mid { padding: 2px 8px; }
+    button { padding: 4px 12px; font-size: 12px; }
+    #stats-row { padding: 0 6px; gap: 4px; }
+    .stats-box { gap: 7px; font-size: 11px; padding: 2px 8px; }
+    #ai-info { position: static; align-self: center; font-size: 11px; padding: 2px 10px; }
+    #hand { gap: 5px; min-height: 96px; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding: 6px 4px; width: 100%; }
+    .hand-card { width: 66px; height: 92px; font-size: 10px; flex-shrink: 0; }
+    .hand-card .desc { font-size: 8px; }
+    .hand-card .name { font-size: 11px; }
+    #player { gap: 4px; padding: 4px; }
+    #tut-bar { top: auto; bottom: 8px; left: 8px; right: 8px; width: auto; transform: none; max-height: 38vh; overflow-y: auto; font-size: 12px; }
+    #ai-play .hand-card { width: 80px; height: 110px; }
+    #gameover h2 { font-size: 20px; }
+    #gameover { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div id="main">
+  <h1>👑 皇舆争霸 · 二版基础包（人机对战）</h1>
+  <div id="supply"></div>
+  <div id="mid">
+    <div id="turn-actions">
+      <button id="btn-end-action">结束行动阶段 →</button>
+      <button id="btn-end-buy" style="display:none">结束回合</button>
+    </div>
+  </div>
+  <div id="player">
+    <div id="ai-info"></div>
+    <div id="stats-row">
+      <div id="stats-left" class="stats-box"></div>
+      <div class="phase-tag" id="phase-box"></div>
+      <div id="stats-right" class="stats-box"></div>
+    </div>
+    <div id="hand"></div>
+  </div>
+</div>
+<div id="sidebar">
+  <h3 id="log-toggle" style="cursor:pointer">📜 战报 <span id="log-toggle-arrow" style="float:right">▾</span></h3>
+  <div id="log"></div>
+</div>
+<div id="ai-play"></div>
+<div id="modal">
+  <div id="modal-text" style="font-size:18px"></div>
+  <div id="modal-cards"></div>
+  <button id="modal-skip" style="display:none">跳过</button>
+</div>
+<div id="gameover"></div>
+<div id="menu" class="overlay">
+  <h2>👑 皇舆争霸</h2>
+  <div style="color:#ccc;margin-bottom:10px">Dominion · 二版基础包 · 人机对战</div>
+  <button class="menu-btn" onclick="startGame()">🎮 开始游戏</button>
+  <button class="menu-btn" onclick="openSettings()">⚙️ 设置</button>
+  <button class="menu-btn" onclick="startTutorial()">📖 教程</button>
+</div>
+<div id="settings" class="overlay" style="display:none">
+  <div id="settings-panel">
+    <h3>⚙️ 市场设置</h3>
+    <p>点击王国卡切换状态：<b style="color:#9aa">灰框 = 随机出现</b> / <b style="color:#2ecc71">绿框 = 必定出现</b> / <b style="color:#e74c3c">红框 = 禁止出现</b></p>
+    <div id="kingdom-grid"></div>
+    <h3>🤖 AI 强度</h3>
+    <div class="toggles">
+      <label><input type="radio" name="ai-level" value="1"> 🌱 简单（多策略随机 + 灵活变招）</label><br>
+      <label><input type="radio" name="ai-level" value="2"> ⚔️ 普通（自适应引擎，精准终局）</label><br>
+      <label><input type="radio" name="ai-level" value="3"> 🔥 困难（蒙特卡洛模拟，胜率最优）</label>
+    </div>
+    <h3>保底规则（随机组市场时保证存在）</h3>
+    <div class="toggles">
+      <label><input type="checkbox" id="tg-2act"> 必定刷出 +2行动 王国卡（村庄/节日）</label><br>
+      <label><input type="checkbox" id="tg-buy"> 必定刷出 +购买 王国卡（市场/节日/议事厅）</label><br>
+      <label><input type="checkbox" id="tg-draw"> 必定刷出 +抽牌 王国卡（铁匠铺/实验室等）</label><br>
+      <label><input type="checkbox" id="tg-atk"> 必定刷出 攻击 王国卡（民兵/女巫/强盗）</label><br>
+      <label><input type="checkbox" id="tg-moat"> 本局没有攻击卡时，必定不刷出反制卡（护城河）</label>
+    </div>
+    <br><div id="settings-warn" style="color:#e74c3c; font-weight:bold; min-height:18px"></div>
+    <button onclick="saveSettings()">💾 保存并返回</button>
+  </div>
+</div>
+<div id="tut-bar"></div>
+
+<script>
+// ==================== 卡牌定义（二版基础包） ====================
+const CARDS = {
+  // 财富
+  copper: { name:"铜币", emoji:"🥉", cost:0, type:"money", desc:"+1 财富", coin:1 },
+  silver: { name:"银币", emoji:"🥈", cost:3, type:"money", desc:"+2 财富", coin:2 },
+  gold:   { name:"金币", emoji:"🥇", cost:6, type:"money", desc:"+3 财富", coin:3 },
+  // 分数
+  estate: { name:"庄园", emoji:"🏡", cost:2, type:"victory", vp:1, desc:"1 分" },
+  duchy:  { name:"公国", emoji:"🏰", cost:5, type:"victory", vp:3, desc:"3 分" },
+  province:{ name:"行省", cost:8, emoji:"👑", type:"victory", vp:6, desc:"6 分" },
+  curse:  { name:"诅咒", emoji:"💀", cost:0, type:"curse", vp:-1, desc:"-1 分" },
+  // 王国卡（二版基础包 25 种）
+  cellar:  { name:"地窖", emoji:"🍷", cost:2, type:"action", actions:1, desc:"+1 行动\n丢弃任意张手牌，抽等量牌" },
+  chapel:  { name:"小教堂", emoji:"⛪", cost:2, type:"action", desc:"至多移除手中 4 张牌（永久移出游戏）" },
+  moat:    { name:"护城河", emoji:"🌊", cost:2, type:"action", desc:"+2 抽牌\n手牌中有此牌时可抵御攻击", draw:2 },
+  harbinger:{ name:"先驱", emoji:"🕊️", cost:3, type:"action", desc:"+1 抽牌 +1 行动\n从弃牌堆选 1 张放回牌库顶" },
+  merchant:{ name:"商人", emoji:"💼", cost:3, type:"action", desc:"+1 抽牌 +1 行动\n本回合打出的第一张银币 +1 财富", draw:1, actions:1 },
+  vassal:  { name:"附庸", emoji:"🎭", cost:3, type:"action", desc:"+2 财富\n弃掉牌库顶 1 张，若是行动牌可打出它" },
+  workshop:{ name:"工坊", emoji:"🔨", cost:3, type:"action", desc:"获得一张价值 ≤4 的牌" },
+  gardens:{ name:"花园", emoji:"🌷", cost:4, type:"victory", vp:0, desc:"每拥有 4 张牌得 1 分（终局计分）" },
+  bandit:  { name:"强盗", emoji:"🥷", cost:5, type:"action", attack:true, desc:"获得一张金币\n其他人翻开牌库顶 2 张，弃掉其中的银币/金币" },
+  artisan: { name:"匠人", emoji:"🎨", cost:6, type:"action", desc:"获得一张价值 ≤5 的牌到手牌\n将 1 张手牌放回牌库顶" },
+  council: { name:"议事厅", emoji:"🗳️", cost:5, type:"action", desc:"+4 抽牌 +1 购买\n其他玩家各抽 1 张牌", draw:4, buys:1 },
+  festival:{ name:"节日", emoji:"🎪", cost:5, type:"action", desc:"+2 行动 +1 购买\n+2 财富", actions:2, buys:1, coin:2 },
+  laboratory:{ name:"实验室", emoji:"🧪", cost:5, type:"action", desc:"+2 抽牌 +1 行动", draw:2, actions:1 },
+  library: { name:"图书馆", emoji:"📚", cost:5, type:"action", desc:"抽牌直至手牌 7 张\n抽到的行动牌可选择略过" },
+  market:  { name:"市场", emoji:"🏪", cost:5, type:"action", desc:"+1 抽牌 +1 行动\n+1 购买 +1 财富", draw:1, actions:1, buys:1, coin:1 },
+  militia: { name:"民兵", emoji:"⚔️", cost:4, type:"action", attack:true, desc:"+2 财富\n其他玩家须弃牌至只剩 3 张", coin:2 },
+  bureaucrat: { name:"官僚", emoji:"🎩", cost:4, type:"action", attack:true, desc:"获得一张银币\n其他玩家将 1 张分数牌放回牌库顶" },
+  mine:    { name:"矿坑", emoji:"⛏️", cost:5, type:"action", desc:"移除 1 张财富牌，获得价值 +3 以内的财富牌到手牌" },
+  moneylender:{ name:"放债人", emoji:"💸", cost:4, type:"action", desc:"移除手中 1 张铜币\n+3 财富", coin:3 },
+  poacher: { name:"偷猎者", emoji:"🏹", cost:4, type:"action", desc:"+1 抽牌 +1 行动 +1 财富\n每有 1 个空供应堆，弃 1 张牌", draw:1, actions:1, coin:1 },
+  remodel: { name:"改造", emoji:"🏗️", cost:4, type:"action", desc:"移除 1 张手牌，获得价值为其 +2 的牌" },
+  sentry:  { name:"哨兵", emoji:"🛡️", cost:5, type:"action", draw:1, actions:1, desc:"+1 抽牌 +1 行动\n查看牌库顶 2 张，分别移除/丢弃/放回" },
+  smithy:  { name:"铁匠铺", emoji:"⚒️", cost:4, type:"action", desc:"+3 抽牌", draw:3 },
+  throne:  { name:"王座", emoji:"🪑", cost:4, type:"action", desc:"选择手牌中 1 张行动牌，将其效果打两次" },
+  village: { name:"村庄", emoji:"🏘️", cost:3, type:"action", desc:"+1 抽牌 +2 行动", draw:1, actions:2 },
+  witch:   { name:"女巫", emoji:"🧙", cost:5, type:"action", attack:true, desc:"+2 抽牌\n其他玩家各获得 1 张诅咒", draw:2 },
+};
+const SUPPLY_ORDER = ["province","duchy","estate","curse","gold","silver","copper"];
+const KINGDOM_ALL = ["cellar","chapel","moat","harbinger","merchant","vassal","workshop","gardens","militia","bureaucrat","moneylender","poacher","remodel","smithy","throne","village","bandit","artisan","council","festival","laboratory","library","market","mine","sentry","witch"];
+
+// ==================== 游戏状态 ====================
+let G, awaiting = null;
+
+function newGame() {
+  G = { players: [], supply: {}, trash: [], kingdom: [], turn: 0, gameOver: false };
+  const nP = 2;
+  for (let i=0;i<nP;i++) {
+    const deck = [];
+    for (let k=0;k<7;k++) deck.push("copper");
+    for (let k=0;k<3;k++) deck.push("estate");
+    shuffle(deck);
+    G.players.push({ deck, hand: [], discard: [], play: [], actions:1, buys:1, coin:0, isAI: i>0, merchActive:false, merchUsed:false });
+  }
+  G.supply = { copper:60-nP*7, silver:40, gold:30, curse:(nP-1)*10, estate:nP>2?12:8, duchy:nP>2?12:8, province:nP>2?12:8 };
+  G.kingdom = pickKingdom();
+  G.kingdom.forEach(k => G.supply[k] = k==="gardens" ? (nP>2?12:8) : 10);
+  G.kingdom.sort((a,b)=>CARDS[a].cost-CARDS[b].cost);
+  G.players.forEach(p => draw(p,5));
+  G.aiLevel = S.aiLevel || 2;
+  G.aiStrat = AI_STRATS[Math.floor(Math.random()*AI_STRATS.length)];
+  const lvlName = {1:"🌱 简单（多策略）",2:"⚔️ 普通（自适应引擎）",3:"🔥 困难（蒙特卡洛模拟）"}[G.aiLevel];
+  log(`本局王国卡：${G.kingdom.map(cname).join("、")}`);
+  log(`（AI 强度：${lvlName}${G.aiLevel===2 ? " · 本局策略：" + G.aiStrat.name : ""}）`);
+  log("游戏开始！你先行。");
+  startTurn();
+  render();
+}
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function draw(p, n) {
+  for (let i=0;i<n;i++) {
+    if (!p.deck.length) { p.deck = p.discard; p.discard = []; shuffle(p.deck); if(!p.deck.length) return; }
+    p.hand.push(p.deck.pop());
+  }
+}
+function log(msg) {
+  const d = document.getElementById("log");
+  d.innerHTML += `<div>${msg}</div>`; d.scrollTop = d.scrollHeight;
+}
+function cname(id){ const c=CARDS[id]; return (c.emoji||"")+c.name; }
+// 从数组中按选中项移除（索引倒序，避免多选时索引位移）
+function takeSelected(arr, sel) {
+  [...sel].sort((a,b)=>b.idx-a.idx).forEach(s=>arr.splice(s.idx,1));
+}
+function me(){ return G.players[0]; }
+function ai(){ return G.players[1]; }
+function otherOf(p){ return G.players[1-G.players.indexOf(p)]; }
+function countCard(p,id){ return [...p.deck,...p.hand,...p.discard,...p.play].filter(x=>x===id).length; }
+function deckCount(p){ return p.deck.length + p.hand.length + p.discard.length + p.play.length; }
+function vp(p) {
+  let s = 0;
+  [...p.deck,...p.hand,...p.discard,...p.play].forEach(id => {
+    s += id==="gardens" ? Math.floor(deckCount(p)/4) : (CARDS[id].vp||0);
+  });
+  return s;
+}
+// 动画互斥：展示动画播放期间冻结其他操作，避免连锁冲突
+function animBusy() { return aiShowing || aiQueue.length > 0; }
+const aiQueue = [];
+let aiShowing = false;
+function aiShow(id, tag, dur) {
+  aiQueue.push({ id, tag, dur: dur || 900 });
+  if (!aiShowing) aiNext();
+}
+function aiNext() {
+  const box = document.getElementById("ai-play");
+  if (!aiQueue.length) { aiShowing = false; box.style.display = "none"; return; }
+  aiShowing = true;
+  const { id, tag, dur } = aiQueue.shift();
+  box.innerHTML = "";
+  const el = cardEl(id, true);
+  const label = document.createElement("div");
+  label.className = "tag"; label.textContent = tag || "AI 打出";
+  box.appendChild(label); box.appendChild(el);
+  box.style.display = "flex";
+  setTimeout(() => { box.style.display = "none"; setTimeout(aiNext, 120); }, dur || 900);
+}
+
+// ==================== 回合流程 ====================
+function startTurn() {
+  const p = G.players[G.turn];
+  p.actions = 1; p.buys = 1; p.coin = 0; p.merchActive = false; p.merchUsed = false;
+  log(`—— ${p.isAI?"AI":"你"}的回合 ——`);
+  render();
+  if (p.isAI) setTimeout(aiTurn, 700);
+  else tutEvent("newturn");
+}
+function endTurn() {
+  const p = G.players[G.turn];
+  const tutArrange = !!(TUT && !p.isAI && TUT.step === 13); // 须在 tutEvent 推进步骤之前记录
+  if (!p.isAI) tutEvent("turnend");
+  // 打出区的牌回合结束才进入弃牌堆
+  p.discard.push(...p.hand, ...p.play);
+  p.hand = []; p.play = [];
+  // 教程步骤13（第二回合结束）：把牌库顶 5 张安排为铜币——只是调整自己牌库的顺序，
+  // 牌数守恒，使清理阶段的自然抽牌得到 5 财富用于教学
+  if (tutArrange) {
+    if (p.deck.length < 10) { p.deck = p.deck.concat(p.discard); p.discard = []; shuffle(p.deck); }
+    const coppers = [], rest = [];
+    p.deck.forEach(c => (c === "copper" && coppers.length < 5 ? coppers : rest).push(c));
+    p.deck = rest.concat(coppers); // 数组末尾 = 牌库顶
+  }
+  draw(p, 5);
+  log(`回合结束 · 当前比分 —— 你 ${vp(me())} 分 🆚 AI ${vp(ai())} 分`);
+  G.turn = (G.turn+1) % G.players.length;
+  checkGameOver();
+  if (!G.gameOver) startTurn();
+}
+function checkGameOver() {
+  if (G.supply.province === 0 || Object.values(G.supply).filter(v=>v===0).length >= 3) {
+    G.gameOver = true;
+    const scores = G.players.map((p,i) => ({i, s: vp(p), n: deckCount(p)}));
+    scores.sort((a,b) => b.s - a.s || a.n - b.n);
+    const you = scores[0];
+    const div = document.getElementById("gameover");
+    div.style.display = "flex";
+    div.innerHTML = `<h2>游戏结束！${you.i===0?"🎉 你赢了":"😢 AI 获胜"}</h2>` +
+      scores.map(s=>`<div>${s.i===0?"你":"AI"}：${s.s} 分（${s.n} 张牌）</div>`).join("") +
+      `<button onclick="location.reload()">再来一局</button>`;
+  }
+}
+
+// ==================== 玩家行动 ====================
+function playHandCard(idx) {
+  if (awaiting) return;
+  if (animBusy()) return;
+  const p = me();
+  const id = p.hand[idx];
+  const c = CARDS[id];
+  if (c.type !== "action") return;
+  if (p.actions <= 0) { log("没有行动次数了！"); return; }
+  if (tutBlocked("play", id)) return;
+  p.actions--;
+  p.hand.splice(idx,1); p.play.push(id);
+  log(`你打出了 ${cname(id)}`);
+  tutEvent("play", id);
+  playAction(p, id, false);
+}
+function playAction(p, id, isAI) {
+  const c = CARDS[id];
+  if (c.draw) draw(p, c.draw);
+  p.actions += c.actions||0; p.buys += c.buys||0; p.coin += c.coin||0;
+  if (id === "merchant") { if (!p.merchUsed) { p.merchActive = true; p.merchUsed = true; } }
+  if (id === "cellar") {
+    if (isAI) {
+      const disc = p.hand.filter(h=>CARDS[h].type==="victory"||CARDS[h].type==="curse");
+      p.hand = p.hand.filter(h=>!disc.includes(h));
+      p.discard.push(...disc); draw(p, disc.length);
+      if (disc.length) log(`AI 用地窖丢弃了 ${disc.map(cname).join("、")}，并抽了 ${disc.length} 张牌`);
+    } else {
+      selectCards(p.hand, "地窖：选择要丢弃的牌（可选任意张）", true, sel => {
+        p.discard.push(...sel.map(s=>s.id));
+        takeSelected(p.hand, sel);
+        if (sel.length) log(`你用地窖丢弃了 ${sel.map(s=>cname(s.id)).join("、")}，抽了 ${sel.length} 张牌`);
+        draw(p, sel.length); render();
+      });
+      return;
+    }
+  }
+  if (id === "chapel") {
+    if (isAI) {
+      const early = G.supply.province > 4;
+      const trash = p.hand.filter(h => h==="copper" ? early && countCard(p,"gold")<3 : h==="estate" && early && countCard(p,"estate")>2).slice(0,4);
+      trash.forEach(t=>{ p.hand.splice(p.hand.indexOf(t),1); G.trash.push(t); });
+      if (trash.length) log(`AI 用小教堂移除了 ${trash.map(cname).join("、")}`);
+    } else {
+      // 至多 4 张（可以是 0 张）
+      selectCards(p.hand, "小教堂：选择要移除的牌（至多 4 张，可不选）", true, sel => {
+        takeSelected(p.hand, sel);
+        G.trash.push(...sel.map(s=>s.id));
+        if (sel.length) log(`你移除了 ${sel.map(s=>cname(s.id)).join("、")}（进入移除区）`);
+        render();
+      }, 0, 4);
+      return;
+    }
+  }
+  if (id === "harbinger") {
+    if (isAI) {
+      const best = ["gold","province","laboratory","market","festival","silver"].find(x=>p.discard.includes(x));
+      if (best) { p.discard.splice(p.discard.indexOf(best),1); p.deck.push(best); log(`AI 用先驱把 ${cname(best)} 放回了牌库顶`); }
+    } else if (p.discard.length) {
+      selectCards(p.discard, "先驱：从弃牌堆选 1 张放回牌库顶（可不选）", true, sel => {
+        if (sel.length) {
+          const t = sel[0];
+          p.discard.splice(t.idx,1); p.deck.push(t.id);
+          log(`你把 ${cname(t.id)} 放回了牌库顶`);
+        }
+        render();
+      }, 0, 1);
+      return;
+    }
+  }
+  if (id === "vassal") {
+    const c2 = p.deck.pop();
+    if (c2) {
+      log(`${isAI?"AI":"你"}用附庸翻开了牌库顶的 ${cname(c2)}`);
+      if (CARDS[c2].type === "action") {
+        if (isAI) { p.play.push(c2); log(`AI 打出了附庸翻到的 ${cname(c2)}`); playAction(p, c2, true); }
+        else {
+          choiceModal(`附庸：翻到 ${cname(c2)}，是否打出？`, [{label:"打出",value:1},{label:"不打",value:0}], v => {
+            if (v) { p.play.push(c2); log(`你打出了附庸翻到的 ${cname(c2)}`); playAction(p, c2, false); }
+            else p.discard.push(c2);
+            render();
+          }, c2);
+          return;
+        }
+      } else { p.discard.push(c2); log(`（${cname(c2)} 不是行动牌，弃掉）`); }
+    }
+  }
+  if (id === "workshop") {
+    if (isAI) aiGain(p, 4);
+    else {
+      selectSupply("工坊：获得一张价值 ≤4 的牌（可不选）", cid => CARDS[cid].cost<=4, cid => {
+        if (cid) gainCard(p, cid);
+      });
+      return;
+    }
+  }
+  if (id === "bandit") {
+    gainCard(p, "gold");
+    const opp = otherOf(p);
+    if (!opp.hand.includes("moat")) {
+      const seen = [opp.deck.pop(), opp.deck.pop()].filter(Boolean);
+      const treasures = seen.filter(x=>x==="silver"||x==="gold");
+      if (treasures.length) {
+        const t = treasures.reduce((a,b)=>CARDS[b].coin>CARDS[a].coin?b:a);
+        G.trash.push(t);
+        seen.filter(x=>x!==t).forEach(x=>opp.discard.push(x));
+        log(`强盗：${opp.isAI?"AI":"你"}翻出 ${seen.map(cname).join("、")}，${cname(t)} 被移除，其余弃掉`);
+      } else {
+        opp.discard.push(...seen);
+        if (seen.length) log(`强盗：${opp.isAI?"AI":"你"}翻出 ${seen.map(cname).join("、")}，没有银币/金币，全部弃掉`);
+      }
+    } else log(`${isAI?"你":"AI"}的护城河抵御了攻击！`);
+  }
+  if (id === "artisan") {
+    if (isAI) {
+      const got = aiGain(p, 5, true);
+      const worst = p.hand.find(h=>CARDS[h].type==="victory"&&CARDS[h].cost<=2) || p.hand[0];
+      if (worst) { p.hand.splice(p.hand.indexOf(worst),1); p.deck.push(worst); }
+    } else {
+      selectSupply("匠人：获得一张价值 ≤5 的牌到手牌", cid => CARDS[cid].cost<=5, cid => {
+        if (cid) { gainCard(p, cid, true); log(`（${cname(cid)} 已加入手牌）`); }
+        selectCards(p.hand, "匠人：将 1 张手牌放回牌库顶", false, sel => {
+          const t = sel[0];
+          p.hand.splice(t.idx,1); p.deck.push(t.id);
+          render();
+        }, 1, 1);
+        render();
+      });
+      return;
+    }
+  }
+  if (id === "council") {
+    draw(otherOf(p), 1);
+    log(`议事厅：${p.isAI?"你":"AI"} 抽了 1 张牌`);
+  }
+  if (id === "library") {
+    const setAside = [];
+    libraryDraw(p, isAI, setAside, () => render());
+    return;
+  }
+  if (id === "militia") {
+    const opp = otherOf(p);
+    if (!opp.hand.includes("moat")) {
+      if (opp.isAI) {
+        const discarded = [];
+        while (opp.hand.length > 3) discarded.push(opp.hand.pop());
+        opp.discard.push(...discarded);
+        if (discarded.length) log(`民兵攻击：AI 弃掉了 ${discarded.map(cname).join("、")}`);
+      } else {
+        selectCards(opp.hand, "民兵：你必须弃牌至只剩 3 张", false, sel => {
+          takeSelected(opp.hand, sel);
+          opp.discard.push(...sel.map(s=>s.id));
+          if (sel.length) log(`你弃掉了 ${sel.map(s=>cname(s.id)).join("、")}`);
+          tutEvent("discard");
+          render();
+        }, opp.hand.length - 3, opp.hand.length - 3);
+        render(); return;
+      }
+    } else log(`${isAI?"你":"AI"}的护城河抵御了攻击！`);
+  }
+  if (id === "bureaucrat") {
+    gainCard(p, "silver");
+    const opp = otherOf(p);
+    if (!opp.hand.includes("moat")) {
+      const vics = opp.hand.filter(h => CARDS[h].type === "victory");
+      if (vics.length) {
+        if (opp.isAI) {
+          const t = vics.reduce((a,b)=>CARDS[a].vp<=CARDS[b].vp?a:b); // AI 交出最差的分数牌
+          opp.hand.splice(opp.hand.indexOf(t),1); opp.deck.push(t);
+          log(`官僚：AI 把 ${cname(t)} 放回了牌库顶`);
+        } else {
+          selectCards(opp.hand, "官僚：将 1 张分数牌放回牌库顶", false, sel => {
+            const t = sel[0];
+            opp.hand.splice(t.idx,1); opp.deck.push(t.id);
+            log(`你把 ${cname(t.id)} 放回了牌库顶`);
+            render();
+          }, 1, 1, h => CARDS[h].type==="victory");
+          render(); return;
+        }
+      } else {
+        log(`官僚：${opp.isAI?"AI":"你"} 没有分数牌，展示手牌（${opp.hand.map(cname).join("、")}）`);
+      }
+    } else log(`${isAI?"你":"AI"}的护城河抵御了攻击！`);
+  }
+  if (id === "mine") {
+    if (isAI) {
+      if (p.hand.includes("copper")) { trashFromHand(p,"copper"); gainCard(p,"silver",true); }
+      else if (p.hand.includes("silver")) { trashFromHand(p,"silver"); gainCard(p,"gold",true); }
+    } else {
+      selectCards(p.hand, "矿坑：选择 1 张财富牌移除", false, sel => {
+        const t = sel[0];
+        p.hand.splice(t.idx,1); G.trash.push(t.id);
+        log(`你移除了 ${cname(t.id)}`);
+        selectSupply(`矿坑：获得一张价值 ≤${CARDS[t.id].cost+3} 的财富牌到手牌`,
+          cid => CARDS[cid].type==="money" && CARDS[cid].cost <= CARDS[t.id].cost+3,
+          cid => { if (cid) { gainCard(p, cid, true); log(`（${cname(cid)} 已加入手牌）`); } render(); });
+        render();
+      }, 1, 1, h => CARDS[h].type==="money");
+      return;
+    }
+  }
+  if (id === "moneylender") {
+    if (p.hand.includes("copper")) {
+      trashFromHand(p, "copper");
+      log(`${isAI?"AI":"你"}用放债人移除了 1 张铜币`);
+    }
+  }
+  if (id === "poacher") {
+    const empties = Object.values(G.supply).filter(v=>v===0).length;
+    if (empties > 0) {
+      if (isAI) {
+        const d2 = p.hand.splice(0, Math.min(empties, p.hand.length));
+        p.discard.push(...d2);
+        if (d2.length) log(`偷猎者：AI 因空供应堆弃了 ${d2.length} 张牌`);
+      } else {
+        selectCards(p.hand, `偷猎者：有 ${empties} 个空供应堆，须弃 ${Math.min(empties,p.hand.length)} 张牌`, false, sel => {
+          takeSelected(p.hand, sel);
+          p.discard.push(...sel.map(s=>s.id));
+          log(`你因偷猎者弃了 ${sel.map(s=>cname(s.id)).join("、")}`);
+          render();
+        }, Math.min(empties, p.hand.length), Math.min(empties, p.hand.length));
+        return;
+      }
+    }
+  }
+  if (id === "remodel") {
+    if (isAI) {
+      const idx = p.hand.findIndex(h=>CARDS[h].cost<=5&&CARDS[h].type!=="victory");
+      const t = p.hand[idx] || p.hand[0];
+      if (t) {
+        p.hand.splice(p.hand.indexOf(t),1); G.trash.push(t);
+        log(`AI 用改造移除了 ${cname(t)}`);
+        aiGain(p, CARDS[t].cost+2);
+      }
+    } else {
+      selectCards(p.hand, "改造：选择 1 张要移除的手牌", false, sel => {
+        const t = sel[0];
+        p.hand.splice(t.idx,1); G.trash.push(t.id);
+        log(`你移除了 ${cname(t.id)}`);
+        selectSupply(`改造：获得一张价值 ≤${CARDS[t.id].cost+2} 的牌`,
+          cid => CARDS[cid].cost <= CARDS[t.id].cost+2,
+          cid => { if (cid) gainCard(p, cid); render(); });
+        render();
+      }, 1, 1);
+      return;
+    }
+  }
+  if (id === "sentry") {
+    const seen = [p.deck.pop(), p.deck.pop()].filter(Boolean);
+    if (!seen.length) { render(); return; }
+    if (isAI) {
+      const trash = seen.filter(x=>CARDS[x].type==="victory"||CARDS[x].type==="curse"||x==="copper");
+      const keep = seen.filter(x=>!trash.includes(x));
+      G.trash.push(...trash);
+      p.deck.push(...keep);
+      if (trash.length) log(`哨兵：AI 移除了 ${trash.map(cname).join("、")}`);
+      if (keep.length) log(`哨兵：AI 把 ${keep.map(cname).join("、")} 放回牌库顶`);
+    } else {
+      selectCards(seen, `哨兵：查看牌库顶 ${seen.length} 张，选择要移除的（可不选）`, true, selT => {
+        selT.forEach(s=>G.trash.push(s.id));
+        const rest = seen.filter(x=>!selT.map(s=>s.id).includes(x));
+        if (!rest.length) { log(`哨兵：你移除了 ${selT.map(s=>cname(s.id)).join("、")}`); render(); return; }
+        selectCards(rest, "哨兵：剩下的牌中，选择要丢弃的（可不选）", true, selD => {
+          selD.forEach(s=>p.discard.push(s.id));
+          const back = rest.filter(x=>!selD.map(s=>s.id).includes(x));
+          p.deck.push(...back);
+          log(`哨兵：${selT.length?`移除 ${selT.map(s=>cname(s.id)).join("、")}，`:""}${selD.length?`丢弃 ${selD.map(s=>cname(s.id)).join("、")}，`:""}${back.length?`放回 ${back.map(cname).join("、")}`:""}`);
+          render();
+        }, 0, rest.length);
+      }, 0, seen.length);
+      return;
+    }
+  }
+  if (id === "throne") {
+    const playable = p.hand.filter(h=>CARDS[h].type==="action");
+    if (playable.length) {
+      if (isAI) {
+        const t = playable.find(h=>CARDS[h].draw) || playable[0];
+        p.hand.splice(p.hand.indexOf(t),1); p.play.push(t);
+        log(`AI 用王座将 ${cname(t)} 打出两次`);
+        aiShow(t, "AI 王座×2");
+        playAction(p, t, true);
+        playAction(p, t, true);
+      } else {
+        selectCards(p.hand, "王座：选择 1 张行动牌，将其效果打两次", false, sel => {
+          const t = sel[0];
+          p.hand.splice(t.idx,1); p.play.push(t.id);
+          log(`你用王座将 ${cname(t.id)} 打出两次`);
+          playAction(p, t.id, false);
+          playAction(p, t.id, false);
+          render();
+        }, 1, 1, h => CARDS[h].type==="action");
+        return;
+      }
+    }
+  }
+  if (id === "witch") {
+    const opp = otherOf(p);
+    if (!opp.hand.includes("moat")) {
+      if (G.supply.curse > 0) {
+        G.supply.curse--; opp.discard.push("curse");
+        log(`女巫诅咒：${opp.isAI?"AI":"你"} 获得了 1 张💀诅咒`);
+      }
+    } else log(`${isAI?"你":"AI"}的护城河抵御了攻击！`);
+  }
+  render();
+}
+function trashFromHand(p, id) {
+  const i = p.hand.indexOf(id);
+  if (i>=0) { p.hand.splice(i,1); G.trash.push(id); }
+}
+function libraryDraw(p, isAI, setAside, done) {
+  if (p.hand.length >= 7) { p.discard.push(...setAside); log(`${isAI?"AI":"你"}抽牌至 7 张（略过 ${setAside.length} 张）`); done(); return; }
+  if (!p.deck.length) { p.deck = p.discard; p.discard = []; shuffle(p.deck); }
+  if (!p.deck.length) { p.discard.push(...setAside); done(); return; }
+  const c = p.deck.pop();
+  if (CARDS[c].type === "action" && !isAI && p.hand.length < 7) {
+    choiceModal(`图书馆：抽到了 ${cname(c)}，是否保留？`, [{label:"保留",value:1},{label:"略过",value:0}], keep => {
+      if (keep) p.hand.push(c); else setAside.push(c);
+      libraryDraw(p, isAI, setAside, done);
+    }, c);
+  } else {
+    p.hand.push(c);
+    libraryDraw(p, isAI, setAside, done);
+  }
+}
+function gainCard(p, id, toHand) {
+  if (G.supply[id] <= 0) return null;
+  G.supply[id]--;
+  if (toHand) p.hand.push(id); else p.discard.push(id);
+  log(`${p.isAI?"AI":"你"} 获得了 ${cname(id)}${toHand?"（到手牌）":""}`);
+  render();
+  return id;
+}
+
+// ==================== 购买 ====================
+function buyPile(id) {
+  if (awaiting || G.turn !== 0 || G.gameOver) return;
+  if (animBusy()) { log("⏳ 动画播放中，请稍候…"); return; }
+  if (tutBlocked("buy", id)) return;
+  const p = me();
+  const c = CARDS[id];
+  const inBuy = document.getElementById("btn-end-buy").style.display !== "none";
+  if (!inBuy) { log("⚠️ 行动阶段不能购买，请先点「结束行动阶段」"); return; }
+  if (p.buys <= 0) { log("没有购买次数了！"); return; }
+  if (c.cost > p.coin) { log(`财富不足（需要 ${c.cost}，你有 ${p.coin}）`); return; }
+  p.buys--; p.coin -= c.cost;
+  log(`你用 💰${c.cost} 购买了：`);
+  gainCard(p, id);
+  aiShow(id, "你购入 🛒", 1400);
+  tutEvent("buy", id);
+}
+function playMoney() {
+  const p = me();
+  if (G.turn !== 0) return;
+  const inBuy = document.getElementById("btn-end-buy").style.display !== "none";
+  if (!inBuy) endActionPhase();
+  let silverSeen = false;
+  p.hand.forEach(id=>{
+    if (CARDS[id].type === "money") {
+      p.coin += CARDS[id].coin;
+      p.discard.push(id);
+      if (id==="silver") silverSeen = true;
+    }
+  });
+  p.hand = p.hand.filter(id=>CARDS[id].type!=="money");
+  if (silverSeen && p.merchActive) { p.coin += 1; p.merchActive = false; log("商人加成：首张银币 +1 财富"); }
+  log(`你打出财富牌，当前财富：${p.coin}`);
+  render();
+}
+function endActionPhase() {
+  if (G.turn !== 0) return;
+  if (animBusy()) return;
+  if (tutBlocked("phase")) return;
+  // 教程保障（牌数守恒，不凭空增减）：
+  // 步骤11：残部回合若财富不足 2，用牌库/弃牌堆的一枚铜币交换手中一张非财富牌
+  if (TUT && TUT.step === 11) {
+    const p0 = me();
+    let coin = p0.hand.filter(h=>CARDS[h].type==="money").reduce((a,h)=>a+CARDS[h].coin,0);
+    while (coin < 2) {
+      const hi = p0.hand.findIndex(h=>CARDS[h].type!=="money");
+      if (hi < 0) break;
+      let src = p0.deck, si = src.lastIndexOf("copper");
+      if (si < 0) { src = p0.discard; si = src.lastIndexOf("copper"); }
+      if (si < 0) break;
+      const tmp = p0.hand[hi]; p0.hand[hi] = "copper"; src[si] = tmp;
+      coin++;
+    }
+  }
+  document.getElementById("btn-end-action").style.display = "none";
+  document.getElementById("btn-end-buy").style.display = "";
+  playMoney();
+  render();
+  tutEvent("phase");
+}
+document.getElementById("btn-end-action").onclick = endActionPhase;
+document.getElementById("btn-end-buy").onclick = () => {
+  if (animBusy()) return;
+  if (tutBlocked("turnend")) return;
+  document.getElementById("btn-end-buy").style.display = "none";
+  document.getElementById("btn-end-action").style.display = "";
+  endTurn();
+};
+
+// ==================== 通用选择 UI ====================
+// filter: 可选的卡 id 过滤器（可选）
+function selectCards(list, text, skippable, cb, min=0, max=99, filter=null) {
+  const shown = filter ? list.map((id,idx)=>({id,idx})).filter(x=>filter(x.id)) : list.map((id,idx)=>({id,idx}));
+  if (shown.length===0) { cb([]); return; }
+  awaiting = true;
+  const modal = document.getElementById("modal");
+  const cardsDiv = document.getElementById("modal-cards");
+  const skipBtn = document.getElementById("modal-skip");
+  const chosen = new Set();
+  modal.style.display = "flex";
+  document.getElementById("modal-text").textContent = text;
+  skipBtn.style.display = "";
+  skipBtn.textContent = "确定";
+  cardsDiv.innerHTML = "";
+  shown.forEach(({id, idx}) => {
+    const el = cardEl(id, true);
+    el.onclick = () => {
+      if (chosen.has(idx)) chosen.delete(idx);
+      else { if (chosen.size >= max) return; chosen.add(idx); }
+      el.style.borderColor = chosen.has(idx) ? "#ffd700" : "#333";
+      skipBtn.textContent = chosen.size ? "确定" : (skippable ? "跳过" : "确定");
+    };
+    cardsDiv.appendChild(el);
+  });
+  skipBtn.onclick = () => {
+    if (chosen.size < min) return;
+    modal.style.display="none"; awaiting=null;
+    cb([...chosen].map(i => shown.find(x=>x.idx===i)).map(x=>({idx:x.idx, id:x.id})));
+  };
+}
+function selectSupply(text, filter, cb) {
+  awaiting = true;
+  const modal = document.getElementById("modal");
+  const cardsDiv = document.getElementById("modal-cards");
+  modal.style.display = "flex";
+  document.getElementById("modal-text").textContent = text;
+  document.getElementById("modal-skip").style.display = "";
+  document.getElementById("modal-skip").textContent = "跳过";
+  cardsDiv.innerHTML = "";
+  Object.keys(G.supply).forEach(id => {
+    if (G.supply[id] <= 0 || !filter(id)) return;
+    const el = cardEl(id, true);
+    el.onclick = () => { modal.style.display="none"; awaiting=null; cb(id); };
+    cardsDiv.appendChild(el);
+  });
+  document.getElementById("modal-skip").onclick = () => { modal.style.display="none"; awaiting=null; cb(undefined); };
+}
+// 带 1 张卡展示的选项弹窗
+function choiceModal(text, options, cb, showCardId) {
+  awaiting = true;
+  const modal = document.getElementById("modal");
+  const cardsDiv = document.getElementById("modal-cards");
+  modal.style.display = "flex";
+  document.getElementById("modal-text").textContent = text;
+  document.getElementById("modal-skip").style.display = "none";
+  cardsDiv.innerHTML = "";
+  if (showCardId) cardsDiv.appendChild(cardEl(showCardId, true));
+  options.forEach(op => {
+    const b = document.createElement("button");
+    b.textContent = op.label;
+    b.onclick = () => { modal.style.display="none"; awaiting=null; cb(op.value); };
+    cardsDiv.appendChild(b);
+  });
+}
+
+// ==================== AI ====================
+function aiGain(p, maxCost, toHand) {
+  const prefs = ["province","gold","duchy","laboratory","market","festival","smithy","militia","bureaucrat","witch","silver","village","workshop","remodel","harbinger","moneylender","mine","sentry","moat","cellar","estate","copper"];
+  for (const id of prefs) {
+    if (G.supply[id] > 0 && CARDS[id].cost <= maxCost && (CARDS[id].type!=="victory" || maxCost>=5)) return gainCard(p, id, toHand);
+  }
+  return null;
+}
+const AI_STRATS = [
+  { name:"大金钱+铁匠铺", picks:(p,coin)=>{
+    const l = [];
+    if (coin>=8) l.push("province");
+    if (coin>=6) l.push("gold");
+    if (coin>=4 && countCard(p,"smithy")<3) l.push("smithy");
+    if (coin>=4 && countCard(p,"militia")<1) l.push("militia");
+    if (coin>=3) l.push("silver");
+    return l; } },
+  { name:"村庄引擎", picks:(p,coin)=>{
+    const l = [];
+    if (coin>=8) l.push("province");
+    if (coin>=6) l.push("gold");
+    if (coin>=5 && countCard(p,"festival")<2) l.push("festival");
+    if (coin>=5 && countCard(p,"laboratory")<3) l.push("laboratory");
+    if (coin>=5 && countCard(p,"market")<2) l.push("market");
+    if (coin>=3 && countCard(p,"village")<4) l.push("village");
+    if (coin>=3 && countCard(p,"silver")<2) l.push("silver");
+    return l; } },
+  { name:"市场连击", picks:(p,coin)=>{
+    const l = [];
+    if (coin>=8) l.push("province");
+    if (coin>=6) l.push("gold");
+    if (coin>=5 && countCard(p,"market")<4) l.push("market");
+    if (coin>=5 && countCard(p,"festival")<2) l.push("festival");
+    if (coin>=4 && countCard(p,"militia")<1) l.push("militia");
+    if (coin>=3 && countCard(p,"silver")<3) l.push("silver");
+    return l; } },
+  { name:"民兵压制", picks:(p,coin)=>{
+    const l = [];
+    if (coin>=8) l.push("province");
+    if (coin>=6) l.push("gold");
+    if (coin>=5 && countCard(p,"mine")<1) l.push("mine");
+    if (coin>=4 && countCard(p,"militia")<3) l.push("militia");
+    if (coin>=4 && countCard(p,"moneylender")<1) l.push("moneylender");
+    if (coin>=3 && countCard(p,"silver")<4) l.push("silver");
+    if (coin>=3 && countCard(p,"village")<3) l.push("village");
+    return l; } },
+  { name:"女巫诅咒流", picks:(p,coin)=>{
+    const l = [];
+    if (coin>=8) l.push("province");
+    if (coin>=6) l.push("gold");
+    if (coin>=5 && countCard(p,"witch")<2) l.push("witch");
+    if (coin>=5 && countCard(p,"council")<2) l.push("council");
+    if (coin>=4 && countCard(p,"smithy")<2) l.push("smithy");
+    if (coin>=3) l.push("silver");
+    return l; } },
+  { name:"小教堂瘦身", picks:(p,coin)=>{
+    const l = [];
+    if (coin>=8) l.push("province");
+    if (coin>=6) l.push("gold");
+    if (coin>=5 && countCard(p,"market")<2) l.push("market");
+    if (coin>=4 && countCard(p,"smithy")<3) l.push("smithy");
+    if (coin>=3) l.push("silver");
+    if (coin>=2 && countCard(p,"chapel")===0) l.push("chapel");
+    return l; } },
+];
+// 灵活变招：从候选列表选购，15% 概率选次优制造不可预测性
+function aiPickBuy(p, coin) {
+  const lvl = G.aiLevel || 2;
+  // 🔥 困难：蒙特卡洛模拟评估
+  if (lvl === 3) return hardPick(p, coin);
+  // ⚔️ 普通：启发式自适应引擎
+  if (lvl === 2) return heuristicPick(p, coin);
+  // 🌱 简单：多策略候选 + 15% 变招
+  let cands = G.aiStrat.picks(p, coin).filter(id => id && G.supply[id] > 0);
+  if (coin>=2 && countCard(p,"moat")===0 && countCard(me(),"militia")>=2 && G.supply.moat>0)
+    cands.unshift("moat");
+  const endgame = G.supply.province<=4 || vp(p)>=18;
+  if (endgame && coin>=5 && G.supply.duchy>0) cands.unshift("duchy");
+  if (endgame && coin>=2 && G.supply.duchy===0 && coin<5 && G.supply.estate>0) cands.unshift("estate");
+  if (!cands.length) return null;
+  let i = 0;
+  if (cands.length > 1 && Math.random() < 0.15) i = 1;
+  return cands[i];
+}
+// 普通 AI 购买决策：启发式自适应引擎（按场面动态选牌 + 终局抢分）
+function heuristicPick(p, coin) {
+  const prov = G.supply.province;
+  const endgame = prov<=4 || vp(p)>=20;
+  if (coin>=8 && prov>0) return "province";
+  if (endgame) {
+    if (coin>=5 && G.supply.duchy>0) return "duchy";
+    if (coin>=2 && coin<5 && G.supply.duchy===0 && G.supply.estate>0) return "estate";
+  }
+  const oppAtk = countCard(me(),"militia") + countCard(me(),"witch") + countCard(me(),"bandit") + countCard(me(),"bureaucrat");
+  if (coin>=2 && countCard(p,"moat")===0 && oppAtk>=2 && G.supply.moat>0) return "moat";
+  const actionCount = [...p.deck,...p.hand,...p.discard,...p.play].filter(x=>CARDS[x].type==="action").length;
+  if (coin>=5) {
+    if (G.supply.laboratory>0 && countCard(p,"laboratory")<3) return "laboratory";
+    if (G.supply.market>0 && countCard(p,"market")<3) return "market";
+    if (G.supply.festival>0 && countCard(p,"festival")<2) return "festival";
+    if (G.supply.witch>0 && G.supply.curse>0 && countCard(p,"witch")<2) return "witch";
+    if (G.supply.gold>0) return "gold";
+  }
+  if (coin>=4) {
+    if (G.supply.smithy>0 && countCard(p,"smithy")<3 && actionCount<=6) return "smithy";
+    if (G.supply.militia>0 && countCard(p,"militia")<2) return "militia";
+    if (G.supply.bureaucrat>0 && countCard(p,"bureaucrat")<1) return "bureaucrat";
+    if (G.supply.moneylender>0 && countCard(p,"moneylender")===0 && countCard(p,"copper")>4) return "moneylender";
+  }
+  if (coin>=3) {
+    if (G.supply.village>0 && countCard(p,"village")<2 && countCard(p,"smithy")>=2) return "village";
+    if (G.supply.silver>0) return "silver";
+  }
+  return null;
+}
+// 困难 AI 购买决策：蒙特卡洛模拟评估（思路源自 Stanford Provincial AI 与 Ian Davis 的 RL 实验——
+// 用大量模拟对局估计每种购买的胜率，终局转向与"落后不自杀"等模式由模拟自然涌现）
+function hardPick(p, coin) {
+  // 对手攻击牌多时补反制（攻击干扰无法在抽象模拟中建模，保留显式规则）
+  const oppAtk = countCard(me(),"militia") + countCard(me(),"witch") + countCard(me(),"bandit") + countCard(me(),"bureaucrat");
+  if (coin>=2 && countCard(p,"moat")===0 && oppAtk>=2 && G.supply.moat>0) return "moat";
+  // 候选：所有买得起的牌 + "不买"
+  const cands = Object.keys(G.supply).filter(id => G.supply[id] > 0 && CARDS[id].cost > 0 && CARDS[id].cost <= coin);
+  cands.push(null);
+  if (cands.length === 1) return null;
+  const meC = simCounts(me());
+  const aiC0 = simCounts(p);
+  const sup0 = { province:G.supply.province, duchy:G.supply.duchy, estate:G.supply.estate, silver:G.supply.silver, gold:G.supply.gold };
+  let best = null, bestRate = -1;
+  for (const cd of cands) {
+    const aiC = Object.assign({}, aiC0);
+    const sup = Object.assign({}, sup0);
+    if (cd) { aiC[cd] = (aiC[cd]||0) + 1; if (sup[cd] !== undefined) sup[cd]--; }
+    let s = 0; const N = 40;
+    for (let i=0;i<N;i++) s += simPlay(aiC, meC, sup, 50);
+    const rate = s / N;
+    if (rate > bestRate + 0.002) { bestRate = rate; best = cd; }
+  }
+  return best;
+}
+// 牌组计数（四区合计）
+function simCounts(p) {
+  const c = {};
+  [...p.deck,...p.hand,...p.discard,...p.play].forEach(x => c[x] = (c[x]||0)+1);
+  return c;
+}
+// 抽象模拟一局：双方按"大金钱+终局抢分"策略（DominionStrategy wiki 标准阈值）打到底，
+// 行动牌按抽牌/财富效果折算为期望财富。返回 AI 的胜率贡献（1 胜 / 0.5 平 / 0 负）
+function simPlay(aiC, huC, sup, maxTurns) {
+  const ai = { c: Object.assign({}, aiC) }, hu = { c: Object.assign({}, huC) };
+  for (let t=0; t<maxTurns; t++) {
+    for (const who of [hu, ai]) {
+      const arr = [];
+      for (const id in who.c) for (let i=0;i<who.c[id];i++) arr.push(id);
+      if (!arr.length) continue;
+      let coin = 0;
+      for (let i=0;i<5;i++) {
+        const id = arr[Math.floor(Math.random()*arr.length)];
+        const c = CARDS[id];
+        if (c.type === "money") coin += c.coin||0;
+        else if (c.type === "action") coin += (c.draw||0)*0.8 + (c.coin||0)*0.9;
+      }
+      const buy = simPolicy(coin, sup);
+      if (buy) { who.c[buy] = (who.c[buy]||0)+1; sup[buy]--; }
+    }
+    if ((sup.province||0) <= 0) break;
+  }
+  const score = cnt => {
+    let n = 0, s = 0;
+    for (const id in cnt) n += cnt[id];
+    for (const id in cnt) s += id==="gardens" ? Math.floor(n/4) : (CARDS[id].vp||0);
+    return s;
+  };
+  const a = score(ai.c), h = score(hu.c);
+  return a > h ? 1 : a < h ? 0 : 0.5;
+}
+// 模拟用购买策略：标准大金钱 + 终局抢分（行省≤4 买公国，≤2 买庄园）
+function simPolicy(coin, sup) {
+  const prov = sup.province||0;
+  if (coin>=8 && prov>0) return "province";
+  if (prov<=4 && coin>=5 && (sup.duchy||0)>0) return "duchy";
+  if (prov<=2 && coin>=2 && (sup.estate||0)>0) return "estate";
+  if (coin>=6 && (sup.gold||0)>0) return "gold";
+  if (coin>=3 && (sup.silver||0)>0) return "silver";
+  return null;
+}
+function aiTurn() {
+  const p = ai();
+  let guard = 0;
+  while (p.actions > 0 && guard++ < 20) {
+    const idx = p.hand.findIndex(h => CARDS[h].type === "action" && h !== "moat");
+    if (idx === -1) break;
+    const id = p.hand[idx];
+    p.actions--;
+    p.hand.splice(idx,1); p.play.push(id);
+    log(`AI 打出了 ${cname(id)}`);
+    aiShow(id);
+    playAction(p, id, true);
+    if (G.gameOver) return;
+  }
+  let aiCoin = 0;
+  const playedMoney = p.hand.filter(id => CARDS[id].type==="money");
+  playedMoney.forEach(id => { aiCoin += CARDS[id].coin; p.discard.push(id); });
+  p.coin += aiCoin;
+  p.hand = p.hand.filter(id=>CARDS[id].type!=="money");
+  log(`AI 打出 ${playedMoney.map(cname).join("、")||"（无财富牌）"}，共 💰${p.coin} 财富`);
+  if (playedMoney.length) {
+    const main = playedMoney.reduce((a,b)=> CARDS[b].coin>CARDS[a].coin?b:a);
+    aiShow(main, `AI 打出财富（💰${p.coin}）`);
+  }
+  let guard2 = 0;
+  while (p.buys > 0 && guard2++ < 10) {
+    const buy = aiPickBuy(p, p.coin);
+    if (!buy) break;
+    log(`AI 用 💰${CARDS[buy].cost} 购买了：`);
+    p.coin -= CARDS[buy].cost; p.buys--;
+    gainCard(p, buy);
+    aiShow(buy, "AI 购入", 1600);
+  }
+  render();
+  const waitAi = () => { if (aiQueue.length || aiShowing) setTimeout(waitAi, 200); else setTimeout(endTurn, 400); };
+  waitAi();
+}
+
+// ==================== 渲染 ====================
+function cardEl(id, big) {
+  const c = CARDS[id];
+  const d = document.createElement("div");
+  d.className = big === true ? "hand-card" : (big === "wide" ? "card-tile wide" : "card-tile");
+  d.style.background = c.type==="money" ? {copper:"#b87333",silver:"#c0c0c0",gold:"#ffd700"}[id] || "#ccc"
+    : c.type==="victory" ? "#7c9c5c" : c.type==="curse" ? "#6a5acd" : "#d4e6f1";
+  d.style.color = (c.type==="victory"||c.type==="curse") ? "#fff" : "#111";
+  d.title = cardTip(id);
+  if (big === true) {
+    d.innerHTML = `<div class="name">${c.emoji||""}${c.name}</div><div class="desc">${(c.desc||"").replace("\n","<br>")}</div><div style="font-size:10px">${c.type==="action"?"行动牌":c.type==="money"?"财富牌":c.type==="curse"?"诅咒牌":"分数牌"}</div>`;
+    const badge = document.createElement("span");
+    badge.className = "cost"; badge.textContent = c.cost;
+    d.appendChild(badge);
+  } else {
+    d.innerHTML = `<div class="tname">${c.emoji||""}${c.name}</div><div class="tdesc">${(c.desc||"").replace("\n","<br>")}</div>`;
+    const badge = document.createElement("span");
+    badge.className = "cost"; badge.textContent = c.cost;
+    d.appendChild(badge);
+  }
+  return d;
+}
+function cardTip(id) {
+  const c = CARDS[id];
+  return `${c.emoji||""}${c.name} · 价值 ${c.cost} · ${c.type==="action"?"行动牌":c.type==="money"?"财富牌":c.type==="curse"?"诅咒牌":"分数牌"}\n${(c.desc||"").replace("\n","；")}`;
+}
+function render() {
+  if (!G) return;
+  const s = document.getElementById("supply");
+  s.innerHTML = "";
+  const mkPile = (id, wide) => {
+    const n = G.supply[id];
+    const div = document.createElement("div");
+    div.className = "pile" + (n<=0?" empty":"");
+    const tile = cardEl(id, wide ? "wide" : false);
+    const cnt = document.createElement("span"); cnt.className="count"; cnt.textContent = n;
+    div.appendChild(tile); div.appendChild(cnt);
+    // 购买阶段有剩余购买点且财富足够时，黄色边框提示可买
+    const inBuy = document.getElementById("btn-end-buy").style.display !== "none";
+    if (!G.gameOver && G.turn === 0 && inBuy && me().buys > 0 && n > 0 && CARDS[id].cost <= me().coin)
+      div.classList.add("afford");
+    div.title = cardTip(id);
+    div.onclick = () => buyPile(id);
+    return div;
+  };
+  const g1 = document.createElement("div"); g1.className="pile-group";
+  g1.style.flexDirection = "row"; g1.style.flexWrap = "wrap"; g1.style.justifyContent = "center"; g1.style.maxWidth = "820px";
+  SUPPLY_ORDER.forEach(id=>g1.appendChild(mkPile(id, false)));
+  const g2 = document.createElement("div"); g2.className="pile-group";
+  g2.style.flexWrap = "wrap"; g2.style.maxWidth = "760px"; g2.style.flexDirection = "row"; g2.style.justifyContent = "center";
+  G.kingdom.slice().sort((a,b)=>CARDS[a].cost-CARDS[b].cost).forEach(id=>g2.appendChild(mkPile(id, true)));
+  s.appendChild(g1); s.appendChild(g2);
+
+  const p = me();
+  const handCoin = p.hand.filter(h=>CARDS[h].type==="money").reduce((a,h)=>a+CARDS[h].coin,0);
+  document.getElementById("stats-left").innerHTML =
+    `<span>⚡ 行动 <b>${p.actions}</b></span><span>💰 财富 <b>${p.coin}</b></span>` +
+    `<span>✋ 手牌财富 <b>${handCoin}</b></span><span>🛒 购买 <b>${p.buys}</b></span><span>🏆 你的分数 <b>${vp(me())}</b></span>`;
+  document.getElementById("stats-right").innerHTML =
+    `<span>🃏 手牌 <b>${p.hand.length}</b></span><span>📦 抽牌堆 <b>${p.deck.length}</b></span><span>🗑️ 弃牌堆 <b>${p.discard.length}</b></span>`;
+  document.getElementById("ai-info").innerHTML =
+    `🤖 AI 分数 <b>${vp(ai())}</b>（抽 ${ai().deck.length} / 弃 ${ai().discard.length} / 手 ${ai().hand.length}）`;
+  document.getElementById("phase-box").textContent =
+    G.turn===0 ? (document.getElementById("btn-end-buy").style.display!=="none"?"购买阶段":"行动阶段") : "AI 回合…";
+  document.getElementById("btn-end-action").disabled = G.turn !== 0;
+
+  const h = document.getElementById("hand");
+  h.innerHTML = "";
+  p.hand.forEach((id, i) => {
+    const el = cardEl(id, true);
+    if (CARDS[id].type === "action" && G.turn===0 && !awaiting) {
+      if (p.actions > 0) el.classList.add("selectable");
+      else el.classList.add("no-action");
+    }
+    el.onclick = () => playHandCard(i);
+    h.appendChild(el);
+  });
+}
+
+// ==================== 设置与主菜单 ====================
+let S = { states: {}, g2act: false, gBuy: false, gDraw: false, gAtk: false, counterMoat: false, aiLevel: 2 };
+try { const saved = JSON.parse(localStorage.getItem("dominionSettings")); if (saved) S = Object.assign(S, saved); } catch(e) {}
+
+function pickKingdom() {
+  const pool = KINGDOM_ALL.filter(k => (S.states[k]||"random") !== "ban");
+  let must = KINGDOM_ALL.filter(k => S.states[k] === "must");
+  const cats = {
+    g2act: ["village","festival"],
+    gBuy:  ["market","festival","council"],
+    gDraw: ["smithy","laboratory","council","library","market","witch","sentry","harbinger","merchant"],
+    gAtk:  ["militia","witch","bandit"],
+  };
+  for (const key in cats) {
+    if (S[key] && !must.some(m => cats[key].includes(m))) {
+      const cand = cats[key].filter(x => pool.includes(x) && !must.includes(x));
+      if (cand.length) must.push(cand[Math.floor(Math.random()*cand.length)]);
+    }
+  }
+  must = must.slice(0, 10);
+  const rest = shuffle(pool.filter(k => !must.includes(k)));
+  const kingdom = must.concat(rest.slice(0, Math.max(0, 10 - must.length)));
+  // 没有攻击卡时，护城河是废牌：若混入则换成其他随机卡
+  if (S.counterMoat && kingdom.length === 10 && !kingdom.some(k => CARDS[k].attack) && kingdom.includes("moat") && !must.includes("moat")) {
+    const cand = pool.filter(k => k !== "moat" && !kingdom.includes(k) && !CARDS[k].attack);
+    if (cand.length) kingdom[kingdom.indexOf("moat")] = cand[Math.floor(Math.random()*cand.length)];
+  }
+  return kingdom;
+}
+function startGame() {
+  document.getElementById("menu").style.display = "none";
+  newGame();
+}
+function openSettings() {
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("settings").style.display = "flex";
+  renderKingdomGrid();
+  document.getElementById("tg-2act").checked = S.g2act;
+  document.getElementById("tg-buy").checked = S.gBuy;
+  document.getElementById("tg-draw").checked = S.gDraw;
+  document.getElementById("tg-atk").checked = S.gAtk;
+  document.getElementById("tg-moat").checked = S.counterMoat;
+  document.querySelectorAll(`input[name=ai-level][value="${S.aiLevel||2}"]`).forEach(r => r.checked = true);
+  updateSettingsWarn();
+}
+function renderKingdomGrid() {
+  const grid = document.getElementById("kingdom-grid");
+  grid.innerHTML = "";
+  [...KINGDOM_ALL].sort((a,b)=>CARDS[a].cost-CARDS[b].cost).forEach(k => {
+    const c = CARDS[k];
+    const st = S.states[k] || "random";
+    const d = document.createElement("div");
+    d.className = "kslot" + (st==="must"?" must":st==="ban"?" ban":"");
+    d.style.background = c.type==="victory" ? "#7c9c5c" : "#d4e6f1";
+    d.style.color = c.type==="victory" ? "#fff" : "#111";
+    d.innerHTML = `<div>${c.emoji}${c.name} <small>💰${c.cost}</small></div><div class="st">${st==="must"?"✅必出":st==="ban"?"⛔禁用":"🎲随机"}</div>`;
+    d.title = (c.desc||"").replace("\n","；");
+    d.onclick = () => { S.states[k] = st==="random"?"must":st==="must"?"ban":"random"; renderKingdomGrid(); updateSettingsWarn(); };
+    grid.appendChild(d);
+  });
+}
+function settingsValid() {
+  const pool = KINGDOM_ALL.filter(k => (S.states[k]||"random") !== "ban");
+  const must = KINGDOM_ALL.filter(k => S.states[k] === "must");
+  if (must.length > 10) return `❌ 必出卡（绿框）已有 ${must.length} 张，超过 10 张市场上限，请减少`;
+  if (pool.length < 10) return `❌ 禁用（红框）后仅剩 ${pool.length} 张可用卡牌，不足 10 张，请解禁部分卡牌`;
+  return "";
+}
+function updateSettingsWarn() {
+  document.getElementById("settings-warn").textContent = settingsValid();
+}
+function saveSettings() {
+  const warn = settingsValid();
+  if (warn) { document.getElementById("settings-warn").textContent = warn; return; }
+  S.g2act = document.getElementById("tg-2act").checked;
+  S.gBuy = document.getElementById("tg-buy").checked;
+  S.gDraw = document.getElementById("tg-draw").checked;
+  S.gAtk = document.getElementById("tg-atk").checked;
+  S.counterMoat = document.getElementById("tg-moat").checked;
+  const lvlRadio = document.querySelector("input[name=ai-level]:checked");
+  if (lvlRadio) S.aiLevel = Number(lvlRadio.value);
+  try { localStorage.setItem("dominionSettings", JSON.stringify(S)); } catch(e) {}
+  document.getElementById("settings").style.display = "none";
+  document.getElementById("menu").style.display = "flex";
+}
+
+// ==================== 教程 ====================
+let TUT = null;
+const TUT_STEPS = [
+  { text:`🎩 <b>大臣阿尔弗雷德</b>：陛下，历经加冕风波，王国终于迎来您亲政的第一日。臣阿尔弗雷德，忝为首相，奉先王遗命为您讲解<b>王国治理手册</b>（游戏规则）。<br><br><b>【概述】</b>这片大陆上还有一位雄心勃勃的邻国君主（AI）。两位君主<b>各自拥有独立的牌组</b>（互不共用，对方手牌内容不可见），<b>终局时总分高者加冕胜者</b>。分数只来自分数牌：🏡庄园 1 分、🏰公国 3 分、👑行省 6 分（💀诅咒 −1 分）。<br><br><b>【起始牌组】</b>每位君主开局完全相同：<b>7 枚 🥉铜币 + 3 座 🏡庄园</b>，共 10 张、3 分——洗匀后抽 5 张作为首手牌。起点平等，胜负全看此后如何建设。`, btn:"继续" },
+  { text:`🎩 <b>阿尔弗雷德</b>：<b>【卡牌类型】</b>所有卡分三类，卡牌底部有标注：<br>· <b>财富牌</b>（铜 1 / 银 2 / 金 3 财富）：购买阶段提供金钱 💰<br>· <b>行动牌</b>（浅蓝色）：行动阶段打出，产生各种效果<br>· <b>分数牌</b>（绿色）：终局计分，平时无作用<br><br><b>【供应区（市场）】</b>双方共用同一市场，右上角黄圈为<b>售价</b>、黑圈为<b>剩余数量</b>。基础牌固定供应：分数牌 2 人局各 8 张、🥈银币 40、🥇金币 30、💀诅咒 10；另有 <b>10 种王国卡</b>每堆 10 张（花园属分数牌，2 人局 8 张）——每局从 26 张卡池随机选出，构成本局独特的战术环境。`, btn:"继续" },
+  { text:`🎩 <b>阿尔弗雷德</b>：<b>【回合结构】</b>您的每个回合分三个阶段：<br>① <b>行动阶段</b>：可打出行动牌，<b>每打出 1 张消耗 1 行动</b>（每回合只有 1 行动，左下角 ⚡行动 显示余额；余额为 0 时行动牌会变红提示）<br>② <b>购买阶段</b>：打出财富牌获得金钱，购买 1 张卡（每回合 1 次 🛒购买）<br>③ <b>清理阶段</b>：弃掉手牌，<b>重抽 5 张</b>——请记住：补满手牌只发生在回合结束，其余任何时候手牌都不会自动补充。<br><br>纸上得来终觉浅——<span class="op">请陛下亲手施政，方能领会其中奥妙。</span>`, btn:"继续" },
+  { text:`🎩 <b>阿尔弗雷德</b>：<span class="op">👉 请点击手牌中的 🏘️村庄 打出它。</span><br><br>打出后请留意左下角 ⚡行动 的变化——这是本课的重点。`, ev:"play", need:"village" },
+  { text:`🎩 <b>阿尔弗雷德</b>：看到了吗？打出自带 <b>+2 行动</b>的村庄后：1 − 1（打出消耗）+ 2（卡牌效果）= 还剩 2 次，同时 +1 抽牌。政令环环相扣，这正是治国的节拍。<br><br><span class="op">👉 请再打出 ⚒️铁匠铺</span>（消耗 1 行动，+3 抽牌，听，锻造厂的锤声已起）。`, ev:"play", need:"smithy" },
+  { text:`🎩 <b>阿尔弗雷德</b>：<b>【牌的所在】</b>刚才打出的牌去了「打出区」——它们<b>要等回合结束（清理阶段）才进弃牌堆</b>，不会立即混回牌库。例如先驱、哨兵查看弃牌堆时，看不到您刚打出的牌。<br><br>您拥有的牌分布在四处：<b>抽牌堆</b>（背面待抽）、<b>手牌</b>、<b>打出区</b>、<b>弃牌堆</b>。抽牌堆耗尽时，弃牌堆洗匀成为新的抽牌堆——买下的每一张好牌都会反复为您效力。`, btn:"继续" },
+  { text:`🎩 <b>阿尔弗雷德</b>：政令已毕。<span class="op">👉 请点击「<b>结束行动阶段 →</b>」进入购买阶段</span>——手中的财富牌（🥉铜币）会自动打出换算成金钱，叮当作响，尽入国库。<br><br>※ 财富牌<b>只能</b>在购买阶段产生金钱；行动阶段是无法购买卡牌的。`, ev:"phase" },
+  { text:`🎩 <b>阿尔弗雷德</b>：<b>【购买规则】</b>① 金色边框的牌堆 = 当前金钱买得起；② 每回合基础只有 <b>1 次购买</b>——不过部分行动牌（如市场、节日、议事厅）的效果可以<b>增加</b>购买次数；③ <b>买到的牌进入弃牌堆</b>——本回合不能立即使用，下轮洗回牌库后生效；④ 剩余金钱<b>不保留</b>到下回合。<br><br><span class="op">👉 请点击 🥈银币 堆购入</span>（售价 3，产出 2 财富，成色远胜铜币）。`, ev:"buy", need:"silver" },
+  { text:`🎩 <b>阿尔弗雷德</b>：采购完毕。<span class="op">👉 请点击「<b>结束回合</b>」</span>，进入清理阶段：打出的政令牌与用剩的手牌全部进弃牌堆，您将<b>重抽满 5 张</b>新牌，随后轮到邻国君主行动（右侧战报记录一切）。`, ev:"turnend" },
+  { text:`🎖️ <b>哨探急报：邻国大军压境——是 ⚔️民兵！</b><br><br>🎩 <b>阿尔弗雷德</b>：陛下恕罪，这是<b>攻击牌</b>，它的效果作用于对手：民兵强迫您<b>弃牌至只剩 3 张</b>。<span class="op">👉 请在弹窗中选 2 张弃掉</span>（弃掉的牌进弃牌堆，日后再用；臣建议留下财富牌）。`, ev:"discard" },
+  { text:`🎩 <b>阿尔弗雷德</b>：危机暂解。<b>【应对攻击】</b>只要手牌中持有 🌊<b>护城河</b>，攻击会被自动免疫（无需打出）。<br><br>另请务必分清两种损失：「<b>弃掉</b>」只是进弃牌堆，还能循环使用；「<b>移除</b>」（小教堂、改造等卡的效果）则是<b>永久离开游戏</b>，不可挽回，决断须谨慎。`, btn:"继续" },
+  { text:`🎩 <b>阿尔弗雷德</b>：陛下请看手中——<b>只剩 3 张牌了</b>。这正是攻击的威力：被弃的牌<b>不会</b>立刻补回，您的这个回合只能以残部作战。<br><br><span class="op">👉 请点击「<b>结束行动阶段 →</b>」清点余财</span>——残部也有残部的用法。`, ev:"phase" },
+  { text:`🎩 <b>阿尔弗雷德</b>：积少成多，聚沙成塔——<span class="op">👉 请用余下的财富购买一张力所能及的牌</span>（金色边框的牌堆皆可：2 财富可添一座 🏡庄园，3 财富可入一枚 🥈银币，皆是王国的基石）。`, ev:"buy" },
+  { text:`🎩 <b>阿尔弗雷德</b>：好一笔进项！<span class="op">👉 请点击「<b>结束回合</b>」</span>。<br><br>请记住规则中<b>补牌的唯一时机</b>：清理阶段（回合结束）——现在，弃牌堆将洗匀，您的手牌将<b>重新补满 5 张</b>，如同王国历劫重生。`, ev:"turnend" },
+  { text:`🎩 <b>阿尔弗雷德</b>：新的一天，陛下！五枚铜币新入库，共 <b>5 财富</b>——这就是方才清理阶段的补牌。金钱<b>每回合重新结算</b>，王国的底气终究在牌组本身。<br><br><span class="op">👉 请点击「<b>结束行动阶段 →</b>」清点税收。</span>`, ev:"phase" },
+  { text:`🎩 <b>阿尔弗雷德</b>：5 财富入账，叮当作响！<span class="op">👉 请点击 🏪市场 堆购入</span>（售价 5）——抽牌、行动、购买、金钱全面 +1，商队往来，百业兴旺。<br><br>※ 购买没有标准答案，适合当前局面的就是好牌。`, ev:"buy", need:"market" },
+  { text:`🎩 <b>阿尔弗雷德</b>：<b>【终局条件】</b>满足任一条件，游戏在当前回合结束后立即终局：<br>① 👑<b>行省堆售罄</b>（最常见，行省是分数之最）；<br>② 任意 <b>3 堆</b>供应牌清空。<br><br>终局不看过程领先，只看最终计分——王座的归属，往往悬于最后几张行省。`, btn:"继续" },
+  { text:`🎩 <b>阿尔弗雷德</b>：<b>【计分】</b>终局时双方清点自己<b>全部</b>的牌（抽牌堆/手牌/打出区/弃牌堆）：分数牌按面值计，💀诅咒 −1 分，🌷花园按「每拥有 4 张牌 = 1 分」计——庞大的王国本身就是资产。平分时<b>牌少者胜</b>。`, btn:"继续" },
+  { text:`🎩 <b>阿尔弗雷德</b>：<b>【界面备忘】</b>· 手牌黄色边框 = 可打出的行动牌，红色 = 行动不足<br>· 市场金色边框 = 买得起的牌<br>· 左下：⚡行动 / 💰金钱 / ✋手牌金钱 / 🛒购买 / 🏆您的分数<br>· 右下：手牌数与牌堆余量<br>· 右侧战报可回顾双方全部行动<br>· 中央弹窗 = 需要您抉择的效果`, btn:"继续" },
+  { text:`🎩 <b>阿尔弗雷德</b>：手册讲解完毕，陛下已具备亲政所需的全部知识。邻国的号角已然可闻——剩下的判断与谋略，臣就不越俎代庖了。<br><br>愿胜利与荣耀伴随您的王旗！🚩`, btn:"完成教程", final:true },
+];
+function startTutorial() {
+  document.getElementById("menu").style.display = "none";
+  TUT = { step: 0 };
+  G = { players: [], supply: {}, trash: [], kingdom: ["cellar","market","militia","moat","remodel","smithy","village","workshop","laboratory","gardens"], turn: 0, gameOver: false };
+  for (let i=0;i<2;i++) {
+    const deck=[]; for(let k=0;k<7;k++) deck.push("copper"); for(let k=0;k<3;k++) deck.push("estate"); shuffle(deck);
+    G.players.push({ deck, hand:[], discard:[], play:[], actions:1, buys:1, coin:0, isAI:i>0, merchActive:false, merchUsed:false });
+  }
+  G.supply = { copper:46, silver:40, gold:30, curse:10, estate:8, duchy:8, province:8 };
+  G.kingdom.forEach(k=>G.supply[k]=10);
+  draw(ai(),5);
+  me().hand = ["village","smithy","copper","copper","copper"];
+  // AI 首回合持民兵，制造入侵事件教学
+  ai().hand = ["militia","copper","copper","copper","copper"];
+  G.aiStrat = AI_STRATS[0];
+  log("📖 教程模式：跟随大臣的指引治理王国！");
+  log("（为便于教学，本局起始手牌已直接发放村庄与铁匠铺）");
+  startTurn(); render(); showTutBar();
+}
+function showTutBar() {
+  const bar = document.getElementById("tut-bar");
+  if (!TUT) { bar.style.display = "none"; return; }
+  const s = TUT_STEPS[TUT.step];
+  if (!s) { TUT = null; bar.style.display = "none"; return; }
+  bar.style.display = "block";
+  bar.innerHTML = `<div style="color:#ffd700;font-weight:bold">🎩 大臣 · 教程 ${TUT.step+1}/${TUT_STEPS.length}</div><div style="margin:6px 0">${s.text}</div>` +
+    (s.hint ? `<div style="margin-top:4px;color:#9fd89f">👉 ${s.hint}</div>` : "");
+  if (s.btn) {
+    const b = document.createElement("button");
+    b.textContent = s.btn;
+    b.onclick = () => { if (s.final) { TUT = null; bar.style.display = "none"; location.reload(); } else { TUT.step++; showTutBar(); } };
+    bar.appendChild(b);
+  }
+}
+function tutEvent(ev, data) {
+  if (!TUT) return;
+  const s = TUT_STEPS[TUT.step];
+  if (!s || s.ev !== ev) return;
+  if (s.need && data !== s.need) return;
+  TUT.step++;
+  // 民兵教学只发生一次：弃牌事件后移除 AI 手中/弃牌堆的全部民兵，避免二次入侵打乱教学
+  if (ev === "discard") {
+    ai().hand = ai().hand.filter(x => x !== "militia");
+    ai().discard = ai().discard.filter(x => x !== "militia");
+  }
+  showTutBar();
+}
+// 教程强制：只允许当前步骤规定的操作，其余拦截并晃动提示
+function tutBlocked(kind, id) {
+  if (!TUT) return false;
+  const s = TUT_STEPS[TUT.step];
+  const ok = s && s.ev === kind && (!s.need || s.need === id);
+  if (ok) return false;
+  const bar = document.getElementById("tut-bar");
+  bar.style.borderColor = "#e74c3c";
+  bar.style.background = "rgba(120,10,10,.9)";
+  setTimeout(() => { bar.style.borderColor = "#ffd700"; bar.style.background = "rgba(0,0,0,.85)"; }, 600);
+  return true;
+}
+
+// 显示主菜单（不直接开局）
+document.getElementById("menu").style.display = "flex";
+// PWA 离线缓存注册（通过 http/https 访问时生效；本地双击打开无影响）
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+// 战报折叠
+let logCollapsed = false;
+document.getElementById("log-toggle").onclick = () => {
+  logCollapsed = !logCollapsed;
+  document.getElementById("log").style.display = logCollapsed ? "none" : "block";
+  document.getElementById("log-toggle-arrow").textContent = logCollapsed ? "▴" : "▾";
+  document.getElementById("sidebar").style.maxHeight = logCollapsed ? "none" : "";
+};
+</script>
+</body>
+</html>
