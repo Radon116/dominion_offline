@@ -1,6 +1,6 @@
 // 皇舆争霸 PWA 离线缓存
 const CACHE = "dominion-v1";
-const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg"];
+const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg", "./music.mp3"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));

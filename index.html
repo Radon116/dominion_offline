@@ -115,6 +115,7 @@
     <div id="turn-actions">
       <button id="btn-end-action">结束行动阶段 →</button>
       <button id="btn-end-buy" style="display:none">结束回合</button>
+      <button id="btn-music" title="背景音乐开关（Rite of Passage · Kevin MacLeod · CC BY）">🔊</button>
     </div>
   </div>
   <div id="player">
@@ -138,9 +139,11 @@
   <button id="modal-skip" style="display:none">跳过</button>
 </div>
 <div id="gameover"></div>
+<audio id="bgm" src="music.mp3" loop preload="auto"></audio>
 <div id="menu" class="overlay">
   <h2>👑 皇舆争霸</h2>
   <div style="color:#ccc;margin-bottom:10px">Dominion · 二版基础包 · 人机对战</div>
+  <div style="color:#889;font-size:12px;margin-bottom:6px">🎵 音乐：Rite of Passage — Kevin MacLeod (CC BY 4.0)</div>
   <button class="menu-btn" onclick="startGame()">🎮 开始游戏</button>
   <button class="menu-btn" onclick="openSettings()">⚙️ 设置</button>
   <button class="menu-btn" onclick="startTutorial()">📖 教程</button>
@@ -1138,6 +1141,7 @@ function pickKingdom() {
   return kingdom;
 }
 function startGame() {
+  syncMusic();
   document.getElementById("menu").style.display = "none";
   newGame();
 }
@@ -1219,6 +1223,7 @@ const TUT_STEPS = [
   { text:`🎩 <b>阿尔弗雷德</b>：手册讲解完毕，陛下已具备亲政所需的全部知识。邻国的号角已然可闻——剩下的判断与谋略，臣就不越俎代庖了。<br><br>愿胜利与荣耀伴随您的王旗！🚩`, btn:"完成教程", final:true },
 ];
 function startTutorial() {
+  syncMusic();
   document.getElementById("menu").style.display = "none";
   TUT = { step: 0 };
   G = { players: [], supply: {}, trash: [], kingdom: ["cellar","market","militia","moat","remodel","smithy","village","workshop","laboratory","gardens"], turn: 0, gameOver: false };
@@ -1284,6 +1289,20 @@ document.getElementById("menu").style.display = "flex";
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
+// 背景音乐：Rite of Passage - Kevin MacLeod (CC BY 4.0)，首次用户交互后播放
+let musicOn = localStorage.getItem("dominionMusic") !== "off";
+const bgm = document.getElementById("bgm");
+bgm.volume = 0.35;
+function syncMusic() {
+  document.getElementById("btn-music").textContent = musicOn ? "🔊" : "🔇";
+  if (musicOn) bgm.play().catch(() => {});
+  else bgm.pause();
+}
+document.getElementById("btn-music").onclick = () => {
+  musicOn = !musicOn;
+  localStorage.setItem("dominionMusic", musicOn ? "on" : "off");
+  syncMusic();
+};
 // 战报折叠
 let logCollapsed = false;
 document.getElementById("log-toggle").onclick = () => {
